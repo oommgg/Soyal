@@ -7,7 +7,6 @@ class Ar727
 {
     const ACK = 4;
     const NACK = 5;
-    const FUNC_CARD_OK = 11;
 
     /**
      * host
@@ -44,7 +43,7 @@ class Ar727
      * @param integer $port
      * @param integer $nodeId
      */
-    public function __construct(string $host, int $port = 16320, int $nodeId = 0x01)
+    public function __construct(string $host, int $port = 1621, int $nodeId = 0x01)
     {
         $this->host = $host;
         $this->port = $port;
@@ -119,13 +118,13 @@ class Ar727
     /**
      * get card info by card number
      *
-     * @param integer $cardNumber
+     * @param integer $address
      * @return array
      */
-    public function getCard(int $cardNumber): array
+    public function getCard(int $address): array
     {
-        $address = unpack('C*', pack('S', $cardNumber), 0);
-        $packed = pack('C*', ...$this->newExtPack(0x87, [$address[2], $address[1], 0x01]));
+        $_address = unpack('C*', pack('S', $address), 0);
+        $packed = pack('C*', ...$this->newExtPack(0x87, [$_address[2], $_address[1], 0x01]));
         socket_write($this->socket, $packed, strlen($packed));
         $result = $this->receive();
 
@@ -137,7 +136,7 @@ class Ar727
 
 
         return [
-            'address' => $cardNumber,
+            'address' => $address,
             'uid1' => $uid1,
             'uid2' => $uid2,
             'status' => $status,
@@ -158,21 +157,22 @@ class Ar727
     /**
      * set card info
      *
-     * @param integer $cardNumber
+     * @param integer $address
      * @param integer $uid1
      * @param integer $uid2
      * @param boolean $disable
      * @return self
      */
-    public function setCard(int $cardNumber, int $uid1, int $uid2): self
+    public function setCard(int $address, int $uid1, int $uid2, $disable = false): self
     {
-        $address = unpack('C*', pack('S', $cardNumber), 0);
+        $_address = unpack('C*', pack('S', $address), 0);
         $tag1 = unpack('C*', pack('S', $uid1), 0);
         $tag2 = unpack('C*', pack('S', $uid2), 0);
+        $status = $disable ? 0 : 64;
         $packed = pack('C*', ...$this->newExtPack(0x84, [
             1, //record number to set
-            $address[2], //user address HIGH bit
-            $address[1],  //user address LOW bit
+            $_address[2], //user address HIGH bit
+            $_address[1],  //user address LOW bit
             0,
             0,
             0,
@@ -185,7 +185,7 @@ class Ar727
             0, //pin
             0, //pin
             0, //pin
-            64, //mode 0 for disable, 64 for enable
+            $status, //mode 0 for disable, 64 for enable
             0, //zone
             0xFF, //group1
             0xFF, //group2
@@ -210,12 +210,12 @@ class Ar727
     /**
      * disable card
      *
-     * @param integer $cardNumber
+     * @param integer $address
      * @return self
      */
-    public function disableCard(int $cardNumber): self
+    public function disableCard(int $address): self
     {
-        $this->setCard($cardNumber, 65535, 65535);
+        $this->setCard($address, 65535, 65535, true);
         return $this;
     }
 
