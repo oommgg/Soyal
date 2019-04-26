@@ -1,0 +1,29 @@
+{
+    "name": "oommgg/soyal",
+    "description": "soyal 727 TCPIP communication",
+    "license": "MIT",
+    "require": {
+        "php": "^7.2",
+        "nesbot/carbon": "^2.16"
+    },
+    "authors": [
+        {
+            "name": "Ben Chung",
+            "email": "oommgg@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Oommgg\\Soyal\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+            ]
+        },
+        "branch-alias": {
+            "dev-master": "1.0-dev"
+        }
+    }
+}
