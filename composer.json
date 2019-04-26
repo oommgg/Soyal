@@ -19,11 +19,11 @@
     },
     "extra": {
         "laravel": {
-            "providers": [
-            ]
+            "providers": []
         },
         "branch-alias": {
             "dev-master": "1.0-dev"
         }
-    }
+    },
+    "version": null
 }
