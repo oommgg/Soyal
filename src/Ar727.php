@@ -23,18 +23,18 @@ class Ar727
     protected $port;
 
     /**
-     * socket resource
-     *
-     * @var resource
-     */
-    protected $socket;
-
-    /**
      * target node id
      *
      * @var integer
      */
     protected $nodeId;
+
+    /**
+     * fsock resource
+     *
+     * @var resource
+     */
+    protected $fp;
 
     /**
      * construct
@@ -48,7 +48,6 @@ class Ar727
         $this->host = $host;
         $this->port = $port;
         $this->nodeId = $nodeId;
-        $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         $this->connect();
     }
 
@@ -60,12 +59,9 @@ class Ar727
      */
     public function connect($timeout = 5): self
     {
-        socket_set_timeout($this->socket, $timeout);
-        socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => $timeout, 'usec' => 0]);
-        $result = socket_connect($this->socket, $this->host, $this->port);
-
-        if ($result === false) {
-            throw new \Exception("socket_connect() failed :" . socket_strerror(socket_last_error($this->socket)));
+        $this->fp = fsockopen($this->host, $this->port, $errno, $errstr, $timeout);
+        if (!$this->fp) {
+            throw new \Exception("$errstr ($errno)", $errno);
         }
 
         return $this;
@@ -78,7 +74,7 @@ class Ar727
      */
     public function disconnect(): void
     {
-        socket_close($this->socket);
+        fclose($this->fp);
     }
 
     /**
@@ -87,18 +83,10 @@ class Ar727
      * @param boolean $terminate
      * @return array
      */
-    protected function receive(bool $terminate = true): array
+    protected function receive(): array
     {
-        // socket_set_nonblock($this->socket);
-        $buffer = '';
-        if (false === socket_recv($this->socket, $buffer, 8192, 0)) {
-            throw new \Exception("socket_recv() failed :" . socket_strerror(socket_last_error($this->socket)));
-        }
-
-        // if ($terminate) {
-        //     $this->disconnect();
-        // }
-
+        // ini_set("auto_detect_line_endings", true);
+        $buffer = fread($this->fp, 65535);
         $unpack = unpack('C*', $buffer, 0);
         return $unpack;
     }
@@ -111,7 +99,7 @@ class Ar727
     public function getStatus(): array
     {
         $packed = pack('C*', ...$this->newExtPack(0x18));
-        socket_write($this->socket, $packed, strlen($packed));
+        fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         return $result;
     }
@@ -126,7 +114,7 @@ class Ar727
     {
         $_address = unpack('C*', pack('S', $address), 0);
         $packed = pack('C*', ...$this->newExtPack(0x87, [$_address[2], $_address[1], 0x01]));
-        socket_write($this->socket, $packed, strlen($packed));
+        fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
 
         $uid1 = $this->parseUid($result[14], $result[15]);
@@ -199,7 +187,7 @@ class Ar727
             0,
             0
         ]));
-        socket_write($this->socket, $packed, strlen($packed));
+        fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         if ($this->check($result) != self::ACK) {
             throw new \Exception("Error on setting card");
@@ -232,7 +220,7 @@ class Ar727
         $tag1 = unpack('C*', pack('S', $start), 0);
         $tag2 = unpack('C*', pack('S', $end == null ? $start + 1 : $end), 0);
         $packed = pack('C*', ...$this->newExtPack(0x84, [$tag1[2], $tag1[1], $tag2[2], $tag2[1]]));
-        socket_write($this->socket, $packed, strlen($packed));
+        fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         return $result;
     }
@@ -245,7 +233,8 @@ class Ar727
     public function getTime(): string
     {
         $packed = pack('C*', ...$this->newExtPack(0x24));
-        socket_write($this->socket, $packed, strlen($packed));
+        // fwrite($this->fp, $packed, strlen($packed));
+        fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         $time = Carbon::create(2000+$result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
         return $time->toDateTimeString();
@@ -263,7 +252,7 @@ class Ar727
         $packed = pack('C*', ...$this->newExtPack(0x23, [
             $now->second, $now->minute, $now->hour, $now->dayOfWeek + 1, $now->day, $now->month, $now->year % 100,
         ]));
-        socket_write($this->socket, $packed, strlen($packed));
+        fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         if ($this->check($result) != self::ACK) {
             throw new \Exception("Error on setting time");
@@ -280,7 +269,7 @@ class Ar727
     public function getOldestLog(): array
     {
         $packed = pack('C*', ...$this->newExtPack(0x25));
-        socket_write($this->socket, $packed, strlen($packed));
+        fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         $code = $this->check($result);
 
@@ -312,7 +301,7 @@ class Ar727
     public function deleteOldestLog(): self
     {
         $packed = pack('C*', ...$this->newExtPack(0x37));
-        socket_write($this->socket, $packed, strlen($packed));
+        fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         if ($this->check($result) != self::ACK) {
             throw new \Exception('Error on deleting event log');
