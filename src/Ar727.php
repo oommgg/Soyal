@@ -59,7 +59,7 @@ class Ar727
      */
     public function connect($timeout = 5): self
     {
-        $this->fp = fsockopen($this->host, $this->port, $errno, $errstr, $timeout);
+        $this->fp = @fsockopen($this->host, $this->port, $errno, $errstr, $timeout);
         if (!$this->fp) {
             throw new \Exception("$errstr ($errno)", $errno);
         }
