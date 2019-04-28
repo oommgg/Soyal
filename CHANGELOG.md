@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+# [](https://github.com/oommgg/Soyal/compare/v1.0.3...v) (2019-04-28)
+
+
+### Bug Fixes
+
+* caught exception ([45f4020](https://github.com/oommgg/Soyal/commit/45f4020))
+
+
+
+# Change Log
+
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
 # [](https://github.com/oommgg/Soyal/compare/v1.0.2...v) (2019-04-28)
 
 
