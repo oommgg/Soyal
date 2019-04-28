@@ -60,6 +60,7 @@ class Ar727
      */
     public function connect($timeout = 5): self
     {
+        socket_set_timeout($this->socket, $timeout);
         socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => $timeout, 'usec' => 0]);
         $result = socket_connect($this->socket, $this->host, $this->port);
 
