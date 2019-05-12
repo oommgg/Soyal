@@ -278,8 +278,6 @@ class Ar727
             return [];
         }
 
-        var_export($result);
-
         $time = Carbon::create(2000+$result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
         $funcCode = $this->getFunctionCode($result);
         $address = $this->parseUid($result[18], $result[19]);
@@ -290,7 +288,7 @@ class Ar727
         /**
          * F1: 0, F2: 32, F3: 64, F4: 96
          */
-        $type = $result[20] > 0 ? $result[20] / 32 : 1; // F1:1, F2:2, F3:3, F4:4
+        $type = $result[20] > 0 ? ($result[20] / 32) + 1 : 1; // F1:1, F2:2, F3:3, F4:4
 
         return [
             'time' => $time->toDateTimeString(),
