@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.7](https://github.com/oommgg/Soyal/compare/v1.0.6...v1.0.7) (2019-08-21)
+
+
+### Bug Fixes
+
+* throw excaption when node return nothing ([5f64f03](https://github.com/oommgg/Soyal/commit/5f64f03))
+
 ### [1.0.6](https://github.com/oommgg/Soyal/compare/v1.0.5...v1.0.6) (2019-05-12)
 
 
