@@ -64,6 +64,8 @@ class Ar727
             throw new \Exception("$errstr ($errno)", $errno);
         }
 
+        stream_set_blocking($this->fp, 1);
+
         return $this;
     }
 
@@ -87,7 +89,15 @@ class Ar727
     {
         // ini_set("auto_detect_line_endings", true);
         $buffer = fread($this->fp, 65535);
+        // $buffer = stream_get_contents($this->fp, 8192);
+        // var_export(stream_get_meta_data($this->fp));
+
+        if (empty($buffer)) {
+            throw new \Exception('Node error: can not get node data.');
+        }
+
         $unpack = unpack('C*', $buffer, 0);
+
         return $unpack;
     }
 
@@ -233,7 +243,7 @@ class Ar727
     public function getTime(): string
     {
         $packed = pack('C*', ...$this->newExtPack(0x24));
-        // fwrite($this->fp, $packed, strlen($packed));
+        // $packed = pack('C*', ...$this->newPack(0x24));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         $time = Carbon::create(2000+$result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
