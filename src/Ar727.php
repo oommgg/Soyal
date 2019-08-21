@@ -235,6 +235,14 @@ class Ar727
         return $result;
     }
 
+    public function reboot()
+    {
+        $packed = pack('C*', ...$this->newExtPack(0xA6, [0xFD]));
+        fwrite($this->fp, $packed, strlen($packed));
+        $result = $this->receive();
+        return $result;
+    }
+
     /**
      * 取得卡機時間
      *
