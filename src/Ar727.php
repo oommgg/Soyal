@@ -2,6 +2,8 @@
 namespace Oommgg\Soyal;
 
 use Carbon\Carbon;
+use Oommgg\Soyal\Exceptions\DeviceErrorException;
+use Oommgg\Soyal\Exceptions\DeviceTimeOutException;
 
 class Ar727
 {
@@ -61,7 +63,7 @@ class Ar727
     {
         $this->fp = @fsockopen($this->host, $this->port, $errno, $errstr, $timeout);
         if (!$this->fp) {
-            throw new \Exception("$errstr ($errno)", $errno);
+            throw new DeviceTimeOutException("$errstr ($errno)", $errno);
         }
 
         stream_set_blocking($this->fp, 1);
@@ -93,7 +95,7 @@ class Ar727
         // var_export(stream_get_meta_data($this->fp));
 
         if (empty($buffer)) {
-            throw new \Exception('Node error: can not get node data.');
+            throw new DeviceErrorException('Node error: can not get node data.');
         }
 
         $unpack = unpack('C*', $buffer, 0);
@@ -200,7 +202,7 @@ class Ar727
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         if ($this->check($result) != self::ACK) {
-            throw new \Exception("Error on setting card");
+            throw new DeviceErrorException("Error on setting card");
         }
 
         return $this;
@@ -273,7 +275,7 @@ class Ar727
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         if ($this->check($result) != self::ACK) {
-            throw new \Exception("Error on setting time");
+            throw new DeviceErrorException("Error on setting time");
         }
 
         return $this;
@@ -330,7 +332,7 @@ class Ar727
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
         if ($this->check($result) != self::ACK) {
-            throw new \Exception('Error on deleting event log');
+            throw new DeviceErrorException('Error on deleting event log');
         }
 
         return $this;
