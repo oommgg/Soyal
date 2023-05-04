@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/oommgg/Soyal/compare/v1.3.0...v1.4.0) (2023-05-04)
+
+
+### Features
+
+* add support php 7.x & 8.1 ([cf656fd](https://github.com/oommgg/Soyal/commit/cf656fd532710aa728587a7544bb0d6b41cab169))
+
 ## [1.3.0](https://github.com/oommgg/Soyal/compare/v1.2.0...v1.3.0) (2023-05-04)
 
 
