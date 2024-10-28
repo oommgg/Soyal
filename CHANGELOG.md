@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.6.0](https://github.com/oommgg/soyal/compare/v1.5.0...v1.6.0) (2024-10-28)
+
+
+### Features
+
+* support fingerprint AR-837EF ([a045554](https://github.com/oommgg/soyal/commit/a04555443cd9d4d83bbef862853c7f30ae4d582b))
+
 ## [1.5.0](https://github.com/oommgg/Soyal/compare/v1.4.1...v1.5.0) (2023-05-04)
 
 
