@@ -1,4 +1,5 @@
 <?php
+
 namespace Oommgg\Soyal;
 
 use Carbon\Carbon;
@@ -7,8 +8,8 @@ use Oommgg\Soyal\Exceptions\DeviceTimeOutException;
 
 class Ar727
 {
-    const ACK = 4;
-    const NACK = 5;
+    public const ACK = 4;
+    public const NACK = 5;
 
     /**
      * host
@@ -149,7 +150,7 @@ class Ar727
         //   15 => 17, //uid1 low: 0x11, 0xB711 => 46865
         //   16 => 251, //uid2 high: 0xFB
         //   17 => 62, //uid2 low: 0x3E, 0xFB3E => 64318
-        //   22 => 64, //64: card only, 0: disabled
+        //   22 => 88, //88: card only, with fingerprint, 0: disabled
         //   26 => 99, //expire year
         //   27 => 12, //expire month
         //   28 => 31, //expire day
@@ -169,7 +170,7 @@ class Ar727
         $_address = unpack('C*', pack('S', $address), 0);
         $tag1 = unpack('C*', pack('S', $uid1), 0);
         $tag2 = unpack('C*', pack('S', $uid2), 0);
-        $status = $disable ? 0 : 64;
+        $status = $disable ? 0 : 88; //0b01011000 => 88
         $packed = pack('C*', ...$this->newExtPack(0x84, [
             1, //record number to set
             $_address[2], //user address HIGH bit
@@ -186,7 +187,7 @@ class Ar727
             0, //pin
             0, //pin
             0, //pin
-            $status, //mode 0 for disable, 64 for enable
+            $status, //mode 0 for disable, 88 for enable
             0, //zone
             0xFF, //group1
             0xFF, //group2
@@ -237,7 +238,12 @@ class Ar727
         return $result;
     }
 
-    public function reboot()
+    /**
+     * reboot device
+     *
+     * @return array
+     */
+    public function reboot(): array
     {
         $packed = pack('C*', ...$this->newExtPack(0xA6, [0xFD]));
         fwrite($this->fp, $packed, strlen($packed));
@@ -253,10 +259,9 @@ class Ar727
     public function getTime(): string
     {
         $packed = pack('C*', ...$this->newExtPack(0x24));
-        // $packed = pack('C*', ...$this->newPack(0x24));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
-        $time = Carbon::create(2000+$result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
+        $time = Carbon::create(2000 + $result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
         return $time->toDateTimeString();
     }
 
@@ -298,7 +303,7 @@ class Ar727
             return [];
         }
 
-        $time = Carbon::create(2000+$result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
+        $time = Carbon::create(2000 + $result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
         $funcCode = $this->getFunctionCode($result);
         $address = $this->parseUid($result[18], $result[19]);
         $uid1 = $this->parseUid($result[24], $result[25]);
@@ -336,41 +341,6 @@ class Ar727
         }
 
         return $this;
-    }
-
-    /**
-     * package data
-     *
-     * @param integer $command
-     * @param array $data
-     * @return array
-     */
-    protected function newPack(int $command, array $data = []): array
-    {
-        $length = 4;
-        $xor = 0xFF ^ $this->nodeId ^ $command;
-        $sum = $this->nodeId + $command;
-
-        if ($data) {
-            $length += count($data);
-            foreach ($data as $d) {
-                $xor ^= $d;
-                $sum += $d;
-            }
-        }
-
-        $sum += $xor;
-
-        $buffer = [0x7E, $length, $this->nodeId, $command];
-
-        if ($data) {
-            array_push($buffer, ...$data);
-        }
-
-        array_push($buffer, $xor);
-        array_push($buffer, $sum);
-
-        return $buffer;
     }
 
     /**
@@ -434,7 +404,7 @@ class Ar727
 
         $sum += $xor;
 
-        $valid = $data[$length+1] == $xor % 256 && $data[$length+2] == $sum % 256;
+        $valid = $data[$length + 1] == $xor % 256 && $data[$length + 2] == $sum % 256;
         if (!$valid) {
             return -1;
         }
@@ -452,20 +422,6 @@ class Ar727
     protected function parseUid(int $param1, int $param2): string
     {
         return sprintf("%05d", base_convert(sprintf("%02x", $param1).sprintf("%02x", $param2), 16, 10));
-    }
-
-    /**
-     * get byte from data
-     *
-     * @param array $data
-     * @param integer $index
-     * @return integer
-     */
-    protected function getDataByte(array $data, int $index): int
-    {
-        $extended = $data[1] == 0xFF;
-        $start = $extended ? 9 : 5;
-        return $data[$start + $index];
     }
 
     /**
