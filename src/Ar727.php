@@ -269,9 +269,9 @@ class Ar727
      * 設定卡機時間
      *
      * @param string $time
-     * @return self
+     * @return array
      */
-    public function setTime(string $time = ''): self
+    public function setTime(string $time = ''): array
     {
         $now = $time ? Carbon::parse($time, 'Asia/Taipei') : Carbon::now('Asia/Taipei');
         $packed = pack('C*', ...$this->newExtPack(0x23, [
@@ -279,11 +279,11 @@ class Ar727
         ]));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
-        if ($this->check($result) != self::ACK) {
-            throw new DeviceErrorException("Error on setting time");
-        }
+        // if ($this->check($result) != self::ACK) {
+        //     throw new DeviceErrorException("Error on setting time");
+        // }
 
-        return $this;
+        return $result;
     }
 
     /**

@@ -1,0 +1,18 @@
+{
+  "packageFiles": [
+    {
+      "filename": "composer.json",
+      "type": "json"
+    }
+  ],
+  "bumpFiles": [
+    {
+      "filename": "composer.json",
+      "type": "json"
+    },
+    {
+      "filename": "composer.lock",
+      "type": "json"
+    }
+  ]
+}
