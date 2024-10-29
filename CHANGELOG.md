@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.6.3](https://github.com/oommgg/soyal/compare/v1.6.2...v1.6.3) (2024-10-29)
+
+
+### Bug Fixes
+
+* 修正設定卡機時間 ([584c88d](https://github.com/oommgg/soyal/commit/584c88d9ab63e496f0a91ff2dd01d394317955fe))
+
 ### [1.6.2](https://github.com/oommgg/soyal/compare/v1.6.1...v1.6.2) (2024-10-28)
 
 ### [1.6.1](https://github.com/oommgg/soyal/compare/v1.6.0...v1.6.1) (2024-10-28)
