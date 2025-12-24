@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/oommgg/soyal/compare/v1.6.3...v2.0.0) (2025-12-24)
+
+### ⚠ BREAKING CHANGES
+
+* Requires PHP 8.1 or higher (dropped PHP 7.x and 8.0 support)
+* Upgraded nesbot/carbon from v2 to v3
+
+### Features
+
+* **PHP 8.1+**: Add proper type declarations for all class properties ([#upgrade](https://github.com/oommgg/soyal/issues/upgrade))
+* **Carbon v3**: Upgrade to nesbot/carbon v3 with full compatibility ([#carbon](https://github.com/oommgg/soyal/issues/carbon))
+* **Type Safety**: Add strict type hints to all method parameters and return types
+* **Error Handling**: Enhanced error handling with proper exception throwing for all operations
+* **Status Parsing**: Improved `getStatus()` to return structured data instead of raw bytes
+* **Documentation**: Comprehensive PHPDoc comments with detailed examples for all methods
+
+### Bug Fixes
+
+* **Critical**: Fix checksum validation bug in `check()` method - now correctly processes all data bytes ([#checksum](https://github.com/oommgg/soyal/issues/checksum))
+* **Date Parsing**: Add validation for expired dates in `getCard()` to prevent invalid date exceptions
+* **Time Parsing**: Add try-catch for `getTime()` and `getOldestLog()` to handle invalid time data
+* **Type Safety**: Fix nullable parameter declaration in `resetCards()` for PHP 8.4 compatibility
+
+### Code Quality
+
+* Remove deprecated and commented-out code
+* Simplify `check()` checksum calculation logic
+* Improve `parseUid()` readability with step-by-step conversion
+* Use strict comparison operators (`===`) throughout
+* Modernize code style with PHP 8.1+ best practices
+* Add comprehensive checksum verification tests
+
+### Documentation
+
+* Complete rewrite of README.md with detailed API documentation
+* Add `.github/copilot-instructions.md` for AI coding assistance
+* Include protocol details and implementation notes
+* Add practical examples for common use cases
+* Document all breaking changes and migration path
+
 ### [1.6.3](https://github.com/oommgg/soyal/compare/v1.6.2...v1.6.3) (2024-10-29)
 
 

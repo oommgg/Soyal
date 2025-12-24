@@ -191,9 +191,7 @@ Gets device status information.
 
 ```php
 [
-    'raw' => [...],        // Raw response data
-    'node_id' => 1,        // Node ID
-    'response_code' => 4   // Response code
+    // Raw response data
 ]
 ```
 
@@ -316,20 +314,6 @@ php test.php
 ```
 
 Modify `test.php` with your device's IP address and port before running.
-
-## Changelog
-
-### Version 2.0.0 (2025-12-24)
-
-- ⚠️ **Breaking Change**: Requires PHP 8.1+
-- ✨ Upgraded to Carbon v3
-- 🔧 Fixed checksum validation bug (critical)
-- 📝 Added proper type declarations for all properties and methods
-- 🛡️ Enhanced error handling with proper exception throwing
-- 📚 Improved PHPDoc comments with detailed examples
-- ✅ Added comprehensive checksum verification tests
-- 🎯 Improved date parsing with validation
-- 🔄 Better status parsing with structured response
 
 ## Contributing
 
