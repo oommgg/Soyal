@@ -11,32 +11,11 @@ class Ar727
     public const ACK = 4;
     public const NACK = 5;
 
-    /**
-     * host
-     *
-     * @var string
-     */
-    protected $host;
+    protected string $host;
+    protected int $port;
+    protected int $nodeId;
 
-    /**
-     * port
-     *
-     * @var integer
-     */
-    protected $port;
-
-    /**
-     * target node id
-     *
-     * @var integer
-     */
-    protected $nodeId;
-
-    /**
-     * fsock resource
-     *
-     * @var resource
-     */
+    /** @var resource|false */
     protected $fp;
 
     /**
@@ -57,17 +36,17 @@ class Ar727
     /**
      * connect socket
      *
-     * @param integer $timeout
+     * @param int $timeout
      * @return self
      */
-    public function connect($timeout = 5): self
+    public function connect(int $timeout = 5): self
     {
         $this->fp = @fsockopen($this->host, $this->port, $errno, $errstr, $timeout);
         if (!$this->fp) {
             throw new DeviceTimeOutException("$errstr ($errno)", $errno);
         }
 
-        stream_set_blocking($this->fp, 1);
+        stream_set_blocking($this->fp, true);
 
         return $this;
     }
@@ -85,23 +64,17 @@ class Ar727
     /**
      * receive data from socket
      *
-     * @param boolean $terminate
-     * @return array
+     * @return array<int, int>
      */
     protected function receive(): array
     {
-        // ini_set("auto_detect_line_endings", true);
         $buffer = fread($this->fp, 65535);
-        // $buffer = stream_get_contents($this->fp, 8192);
-        // var_export(stream_get_meta_data($this->fp));
 
         if (empty($buffer)) {
             throw new DeviceErrorException('Node error: can not get node data.');
         }
 
-        $unpack = unpack('C*', $buffer, 0);
-
-        return $unpack;
+        return unpack('C*', $buffer, 0);
     }
 
     /**
@@ -114,14 +87,25 @@ class Ar727
         $packed = pack('C*', ...$this->newExtPack(0x18));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
+
+        if ($this->checksum($result) == self::NACK) {
+            throw new DeviceErrorException('Error on getting device status');
+        }
+
         return $result;
     }
 
     /**
-     * get card info by card number
+     * Get card info by card number
      *
-     * @param integer $address
-     * @return array
+     * Result array indexes:
+     *   14-15: uid1 (high/low bytes, e.g., 0xB711 => 46865)
+     *   16-17: uid2 (high/low bytes, e.g., 0xFB3E => 64318)
+     *   22: status (88: enabled, 0: disabled)
+     *   26-28: expiry date (year/month/day offset from 2000)
+     *
+     * @param int $address Card address (0-16383)
+     * @return array<string, mixed>
      */
     public function getCard(int $address): array
     {
@@ -132,10 +116,23 @@ class Ar727
 
         $uid1 = $this->parseUid($result[14], $result[15]);
         $uid2 = $this->parseUid($result[16], $result[17]);
-        $status = $result[22] > 0 ? true : false;
-        $time = Carbon::create(2000 + ($result[26] % 100), $result[27] % 100, $result[28] % 100);
-        $expired = $time->isValid() ? $time->toDateString() : null;
+        $status = $result[22] > 0;
 
+        // 解析過期日期 (以 2000 年為基準)
+        $year = 2000 + ($result[26] % 100);
+        $month = $result[27] % 100;
+        $day = $result[28] % 100;
+
+        // 檢查日期有效性,避免如 month=0 或 day=0 的無效值
+        $expired = null;
+        if ($month > 0 && $month <= 12 && $day > 0 && $day <= 31) {
+            try {
+                $time = Carbon::create($year, $month, $day);
+                $expired = $time->toDateString();
+            } catch (\Exception $e) {
+                // 無效日期時保持 null
+            }
+        }
 
         return [
             'address' => $address,
@@ -144,66 +141,53 @@ class Ar727
             'status' => $status,
             'expired' => $expired,
         ];
-
-        // $result array
-        //   14 => 183, //uid1 high: 0xB7
-        //   15 => 17, //uid1 low: 0x11, 0xB711 => 46865
-        //   16 => 251, //uid2 high: 0xFB
-        //   17 => 62, //uid2 low: 0x3E, 0xFB3E => 64318
-        //   22 => 88, //88: card only, with fingerprint, 0: disabled
-        //   26 => 99, //expire year
-        //   27 => 12, //expire month
-        //   28 => 31, //expire day
     }
 
     /**
-     * set card info
+     * Set card info
      *
-     * @param integer $address
-     * @param integer $uid1
-     * @param integer $uid2
-     * @param boolean $disable
+     * Status byte (0b01011000 = 88): card enabled
+     * Status byte 0: card disabled
+     *
+     * @param int $address Card address (0-16383)
+     * @param int $uid1 First UID
+     * @param int $uid2 Second UID
+     * @param bool $disable Whether to disable the card
      * @return self
      */
-    public function setCard(int $address, int $uid1, int $uid2, $disable = false): self
+    public function setCard(int $address, int $uid1, int $uid2, bool $disable = false): self
     {
         $_address = unpack('C*', pack('S', $address), 0);
         $tag1 = unpack('C*', pack('S', $uid1), 0);
         $tag2 = unpack('C*', pack('S', $uid2), 0);
-        $status = $disable ? 0 : 88; //0b01011000 => 88
+        $status = $disable ? 0 : 88; // 0b01011000 => 88
+
         $packed = pack('C*', ...$this->newExtPack(0x84, [
-            1, //record number to set
-            $_address[2], //user address HIGH bit
-            $_address[1],  //user address LOW bit
-            0,
-            0,
-            0,
-            0,
-            $tag1[2], //uid1 HIGH bit
-            $tag1[1],  //uid1 LOW bit
-            $tag2[2],  //uid2 high bit
-            $tag2[1],  //uid2 low bit
-            0, //pin
-            0, //pin
-            0, //pin
-            0, //pin
-            $status, //mode 0 for disable, 88 for enable
-            0, //zone
-            0xFF, //group1
-            0xFF, //group2
-            99, //year
-            12, //month
-            31, //day
-            0, //level
-            0,
-            0,
-            0,
-            0
+            1,              // record number to set
+            $_address[2],   // user address HIGH bit
+            $_address[1],   // user address LOW bit
+            0, 0, 0, 0,
+            $tag1[2],       // uid1 HIGH bit
+            $tag1[1],       // uid1 LOW bit
+            $tag2[2],       // uid2 HIGH bit
+            $tag2[1],       // uid2 LOW bit
+            0, 0, 0, 0,     // pin (4 bytes)
+            $status,        // mode: 0 for disable, 88 for enable
+            0,              // zone
+            0xFF,           // group1
+            0xFF,           // group2
+            99,             // year (offset from 2000)
+            12,             // month
+            31,             // day
+            0,              // level
+            0, 0, 0, 0
         ]));
+
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
-        if ($this->check($result) != self::ACK) {
-            throw new DeviceErrorException("Error on setting card");
+
+        if ($this->checksum($result) == self::NACK) {
+            throw new DeviceErrorException('Error on setting card');
         }
 
         return $this;
@@ -225,16 +209,23 @@ class Ar727
      * reset cards
      *
      * @param integer $start
-     * @param integer $end
+     * @param integer|null $end
      * @return array
      */
-    public function resetCards(int $start = 0, int $end = null): array
+    public function resetCards(int $start = 0, ?int $end = null): array
     {
         $tag1 = unpack('C*', pack('S', $start), 0);
-        $tag2 = unpack('C*', pack('S', $end == null ? $start + 1 : $end), 0);
-        $packed = pack('C*', ...$this->newExtPack(0x84, [$tag1[2], $tag1[1], $tag2[2], $tag2[1]]));
+        $endAddress = $end ?? ($start + 1);
+        $tag2 = unpack('C*', pack('S', $endAddress), 0);
+
+        $packed = pack('C*', ...$this->newExtPack(0x85, [$tag1[2], $tag1[1], $tag2[2], $tag2[1]]));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
+
+        if ($this->checksum($result) == self::NACK) {
+            throw new DeviceErrorException('Error on resetting cards');
+        }
+
         return $result;
     }
 
@@ -247,8 +238,7 @@ class Ar727
     {
         $packed = pack('C*', ...$this->newExtPack(0xA6, [0xFD]));
         fwrite($this->fp, $packed, strlen($packed));
-        $result = $this->receive();
-        return $result;
+        return $this->receive();
     }
 
     /**
@@ -261,8 +251,24 @@ class Ar727
         $packed = pack('C*', ...$this->newExtPack(0x24));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
-        $time = Carbon::create(2000 + $result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
-        return $time->toDateTimeString();
+
+        if ($this->checksum($result) == self::NACK) {
+            throw new DeviceErrorException('Error on getting device time');
+        }
+
+        try {
+            $time = Carbon::create(
+                2000 + $result[16],
+                $result[15],
+                $result[14],
+                $result[12],
+                $result[11],
+                $result[10]
+            );
+            return $time->toDateTimeString();
+        } catch (\Exception $e) {
+            throw new DeviceErrorException('Invalid time data received from device: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -279,9 +285,10 @@ class Ar727
         ]));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
-        // if ($this->check($result) != self::ACK) {
-        //     throw new DeviceErrorException("Error on setting time");
-        // }
+
+        if ($this->checksum($result) == self::NACK) {
+            throw new DeviceErrorException('Error on setting device time');
+        }
 
         return $result;
     }
@@ -296,14 +303,27 @@ class Ar727
         $packed = pack('C*', ...$this->newExtPack(0x25));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
-        $code = $this->check($result);
+        $code = $this->checksum($result);
 
+        print_r($result);
         // 沒有任何記錄了
         if ($code == self::ACK) {
             return [];
         }
 
-        $time = Carbon::create(2000 + $result[16], $result[15], $result[14], $result[12], $result[11], $result[10]);
+        try {
+            $time = Carbon::create(
+                2000 + $result[16] % 100,
+                $result[15] % 100,
+                $result[14] % 100,
+                $result[12] % 100,
+                $result[11] % 100,
+                $result[10] % 100
+            );
+        } catch (\Exception $e) {
+            throw new DeviceErrorException('Invalid log time data: ' . $e->getMessage());
+        }
+
         $funcCode = $this->getFunctionCode($result);
         $address = $this->parseUid($result[18], $result[19]);
         $uid1 = $this->parseUid($result[24], $result[25]);
@@ -313,7 +333,7 @@ class Ar727
         /**
          * F1: 0, F2: 32, F3: 64, F4: 96
          */
-        $type = $result[20] > 0 ? ($result[20] / 32) + 1 : 1; // F1:1, F2:2, F3:3, F4:4
+        $type = $result[20] > 0 ? intval($result[20] / 32) + 1 : 1; // F1:1, F2:2, F3:3, F4:4
 
         return [
             'time' => $time->toDateTimeString(),
@@ -336,7 +356,7 @@ class Ar727
         $packed = pack('C*', ...$this->newExtPack(0x37));
         fwrite($this->fp, $packed, strlen($packed));
         $result = $this->receive();
-        if ($this->check($result) != self::ACK) {
+        if ($this->checksum($result) == self::NACK) {
             throw new DeviceErrorException('Error on deleting event log');
         }
 
@@ -381,31 +401,34 @@ class Ar727
     }
 
     /**
-     * checksum return data
+     * Checksum validation for received data
      *
-     * @param array $data
-     * @return int
+     * Validates both XOR and SUM checksums according to protocol
+     *
+     * @param array<int, int> $data Received data buffer
+     * @return int Response code (ACK/NACK) or -1 if checksum invalid
      */
-    protected function check(array $data): int
+    protected function checksum(array $data): int
     {
-        $extended = $data[1] == 0xFF;
-        $start = $extended ? 7 : 3;
-        $code = $extended ? $data[8] : $data[4];
+        $isExtended = $data[1] === 0xFF;
+        $start = $isExtended ? 7 : 3;
+        $code = $isExtended ? $data[8] : $data[4];
 
         $xor = 0xFF;
         $sum = 0;
-        $length = count($data) - 2;
+        $lastDataIndex = count($data) - 2;  // Last data byte index (before checksums)
 
-        for ($i = $start; $i < $length; $i++) {
-            $d = $data[$i];
-            $xor ^= $d;
-            $sum += $d;
+        // Process all data bytes from start to lastDataIndex (inclusive)
+        for ($i = $start; $i <= $lastDataIndex; $i++) {
+            $xor ^= $data[$i];
+            $sum += $data[$i];
         }
 
-        $sum += $xor;
+        $xor %= 256;
+        $sum = ($sum + $xor) % 256;
 
-        $valid = $data[$length + 1] == $xor % 256 && $data[$length + 2] == $sum % 256;
-        if (!$valid) {
+        // Verify checksums
+        if ($data[$lastDataIndex + 1] !== $xor || $data[$lastDataIndex + 2] !== $sum) {
             return -1;
         }
 
@@ -413,25 +436,32 @@ class Ar727
     }
 
     /**
-     * 轉換 uid
+     * Parse UID from two bytes (high and low)
      *
-     * @param integer $param1
-     * @param integer $param2
-     * @return string
+     * Converts two hex bytes to a 5-digit decimal string
+     * Example: high=0xB7, low=0x11 => 0xB711 => 46865 => "46865"
+     *
+     * @param int $high High byte
+     * @param int $low Low byte
+     * @return string 5-digit UID string
      */
-    protected function parseUid(int $param1, int $param2): string
+    protected function parseUid(int $high, int $low): string
     {
-        return sprintf("%05d", base_convert(sprintf("%02x", $param1).sprintf("%02x", $param2), 16, 10));
+        $hexString = sprintf("%02x%02x", $high, $low);
+        $decimal = hexdec($hexString);
+        return sprintf("%05d", $decimal);
     }
 
     /**
-     * get function code from data
+     * Extract function code from response data
      *
-     * @param array $data
-     * @return integer
+     * Handles both extended (0xFF prefix) and standard protocol formats
+     *
+     * @param array<int, int> $data Response data
+     * @return int Function code
      */
     protected function getFunctionCode(array $data): int
     {
-        return $data[1] == 0xFF ? $data[8] : $data[4];
+        return $data[1] === 0xFF ? $data[8] : $data[4];
     }
 }
