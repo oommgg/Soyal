@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.1](https://github.com/oommgg/soyal/compare/v2.0.0...v2.0.1) (2026-03-20)
+
+### Features
+
+* **Time Management**: Add timezone parameter to `setTime()` method for multi-timezone support ([7eac7b8](https://github.com/oommgg/soyal/commit/7eac7b8))
+  - `setTime()` now accepts optional `$timezone` parameter (default: 'Asia/Taipei')
+  - Enables setting device time in different timezones
+  - Maintains backward compatibility with default Asia/Taipei timezone
+
 ## [2.0.0](https://github.com/oommgg/soyal/compare/v1.6.3...v2.0.0) (2025-12-24)
 
 ### ⚠ BREAKING CHANGES
