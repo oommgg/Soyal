@@ -275,11 +275,12 @@ class Ar727
      * 設定卡機時間
      *
      * @param string $time
+     * @param string|null $timezone
      * @return array
      */
-    public function setTime(string $time = ''): array
+    public function setTime(string $time = '', ?string $timezone = 'Asia/Taipei'): array
     {
-        $now = $time ? Carbon::parse($time, 'Asia/Taipei') : Carbon::now('Asia/Taipei');
+        $now = $time ? Carbon::parse($time, $timezone) : Carbon::now($timezone);
         $packed = pack('C*', ...$this->newExtPack(0x23, [
             $now->second, $now->minute, $now->hour, $now->dayOfWeek + 1, $now->day, $now->month, $now->year % 100,
         ]));
@@ -305,7 +306,6 @@ class Ar727
         $result = $this->receive();
         $code = $this->checksum($result);
 
-        print_r($result);
         // 沒有任何記錄了
         if ($code == self::ACK) {
             return [];
